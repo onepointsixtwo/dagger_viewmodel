@@ -6,6 +6,8 @@ The ViewModel subclass cannot be dependency injected directly with Dagger2 in th
 
 This library allows you to inject ViewModels with as little overhead as possible. There are only two parts to it. This description assumes you have prior knowledge of working with Dagger2.
 
+The code is generated at compile time by the annotation processor, the code for which is [here](https://github.com/onepointsixtwo/dagger_viewmodel_processor).
+
 
 ## The Annotation
 
