@@ -4,5 +4,142 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 }
 
-sourceCompatibility = "1.8"
-targetCompatibility = "1.8"
+sourceCompatibility = "1.7"
+targetCompatibility = "1.7"
+
+['java', 'signing', 'maven-publish'].each {
+    apply plugin: it
+}
+// project information
+group = 'com.onepointsixtwo'
+version = '1.0.0'
+
+
+// javadoc.jar generation
+task javadocJar (type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+// sources.jar generation
+task sourceJar (type : Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+// pom file name
+ext {
+    pomFilePath = "${project.projectDir}/tmp/pom.xml"
+    pomFile = file(pomFilePath)
+}
+
+// add configuration for pom signing
+configurations {
+    pom
+}
+
+// summarize artifacts
+artifacts {
+    archives jar
+    archives sourceJar
+    archives javadocJar
+    if (pomFile.exists()) {
+        pom pomFile
+    }
+}
+
+// sign all artifacts
+task signJars (type : Sign, dependsOn: [jar, javadocJar, sourceJar]) {
+    sign configurations.archives
+}
+
+// sign pom
+task signPom(type: Sign) {
+    sign configurations.pom
+}
+
+// defining which tasks should be called
+if (project.ext.pomFile.exists()) {
+    task preparePublication (dependsOn : [signJars, signPom])
+} else {
+    task preparePublication (dependsOn : signJars)
+}
+
+// extract signatures and add classifier and extension to them
+def getSignatureFiles = {
+    def allFiles = project.tasks.signJars.signatureFiles.collect { it }
+    def signedSources = allFiles.find { it.name.contains('-sources') }
+    def signedJavadoc = allFiles.find { it.name.contains('-javadoc') }
+    def signedJar = (allFiles - [signedSources, signedJavadoc])[0]
+    return [
+            [archive: signedSources, classifier: 'sources', extension: 'jar.asc'],
+            [archive: signedJavadoc, classifier: 'javadoc', extension: 'jar.asc'],
+            [archive: signedJar,     classifier: null,      extension: 'jar.asc']
+    ]
+}
+
+// extract pom signature
+def getPomSignature = {
+    return project.tasks.signPom.signatureFiles.collect{it}[0]
+}
+
+
+publishing {
+    publications {
+        gpgJars(MavenPublication) {
+            getSignatureFiles().each {signature ->
+                artifact (signature.archive) {
+                    classifier = signature.classifier
+                    extension  = signature.extension
+                }
+            }
+        }
+        if (project.ext.pomFile.exists()) {
+            gpgPom(MavenPublication) {
+                artifact (getPomSignature()) {
+                    classifier = null
+                    extension  = 'pom.asc'
+                }
+            }
+        }
+        jar(MavenPublication) {
+            from components.java
+            pom.withXml {
+                asNode().children().last() + {
+                    resolveStrategy = DELEGATE_FIRST
+                    name 'dagger_viewmodel'
+                    description 'Provides the annotation to support injection of ViewModels'
+                    url "https://github.com/onepointsixtwo/dagger_viewmodel"
+                    scm {
+                        url 'https://github.com/onepointsixtwo/dagger_viewmodel'
+                        connection 'https://github.com/onepointsixtwo/dagger_viewmodel.git'
+                        developerConnection 'git@github.com:onepointsixtwo/dagger_viewmodel.git'
+                    }
+                    licenses {
+                        license {
+                            name 'MIT'
+                            url 'https://opensource.org/licenses/MIT'
+                            distribution 'repo'
+                        }
+                    }
+                    developers {
+                        developer {
+                            id 'onepointsixtwo'
+                            name 'John Kartupelis'
+                            email 'john.kartupelis@gmail.com'
+                        }
+                    }
+                }
+            }
+        }
+    }
+    repositories {
+        if (project.ext.pomFile.exists()) {
+            url 'https://oss.sonatype.org/service/local/staging/deploy/maven2/'
+            credentials {
+                username = sonatypeUsername
+                password = sonatypePassword
+            }
+        }
+    }
+}
