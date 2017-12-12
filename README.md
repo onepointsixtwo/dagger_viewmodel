@@ -3,7 +3,7 @@
 
 ## Overview
 
-Dagger ViewModel provides a seamless way of integrating the ViewModels from Android's architecture packages, with the depedency injection of Dagger2 without having to have Fragment subclasses which fetch their own ViewModels. I allows the declarative style of using an annotation for the injectable field so that the Fragment or Activity to which the ViewModel belongs can inject its viewmodel without having to override a lifecycle method to do so.
+Dagger ViewModel provides a seamless way of integrating the ViewModels from Android's architecture packages, with the depedency injection of Dagger2 without having to have Fragment subclasses which fetch their own ViewModels. It allows the declarative style of using an annotation for the injectable field so that the Fragment or Activity to which the ViewModel belongs can inject its viewmodel without having to override a lifecycle method to do so.
 
 There are many places which suggest a 'half-and-half' approach when using Dagger2 by using dagger to inject the factory which knows how to build the ViewModel subclasses, and then writing code in a lifecycle method of the Fragment or Activity to set the ViewModel field. However, this library makes it as simple as using one annotation: the `@InjectViewModel` annotation.
 
@@ -86,7 +86,7 @@ void injectFragment(Fragment fragment, ViewModelFactory factory) {
 }
 ```
 
-Where the ViewModel factory is injected directly by Dagger2. The power of this, is that it does not have to be called by the individual fragment or Activity being injected. It can be handled by a class which controls depeendency injection in a single place within your application.
+Where the ViewModel factory is injected directly by Dagger2. The power of this, is that it does not have to be called by the individual fragment or Activity being injected. It can be handled by a class which controls dependency injection in a single place within your application.
 
 
 ## License
