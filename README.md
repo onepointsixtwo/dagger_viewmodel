@@ -1,28 +1,36 @@
 # Dagger ViewModel
 
-The Dagger ViewModel library is designed to work with Dagger2 (and I feel I should state that I have no affiation whatsoever with the writers of the wonderful Dagger2 library and that I have simply named the library as this because it's an adequate description of what it _does_) to allow dependency injection of the relatively new Android architecture component of the ViewModel subclass.
 
-The ViewModel subclass cannot be dependency injected directly with Dagger2 in the usual way, because it requires an input only known at runtime - the specific instance of a Fragment or Activity it is tied to. It is quite possible to use Dagger2 to inject the viewmodel by just using a small part of this library - the parts in [dagger_viewmodel_android](https://github.com/onepointsixtwo/dagger_viewmodel_android) which is taken from some example code of Google's and provides a custom factory to provide injected ViewModels. However, it means leaking the factory out into the Activity and Fragment subclasses which strikes me as an ugly way to do it.
+## Overview
 
-This library allows you to inject ViewModels with as little overhead as possible. There are only two parts to it. This description assumes you have prior knowledge of working with Dagger2.
+Dagger ViewModel provides a seamless way of integrating the ViewModels from Android's architecture packages, with the depedency injection of Dagger2 without having to have Fragment subclasses which fetch their own ViewModels. I allows the declarative style of using an annotation for the injectable field so that the Fragment or Activity to which the ViewModel belongs can inject its viewmodel without having to override a lifecycle method to do so.
 
-The code is generated at compile time by the annotation processor, the code for which is [here](https://github.com/onepointsixtwo/dagger_viewmodel_processor).
+There are many places which suggest a 'half-and-half' approach when using Dagger2 by using dagger to inject the factory which knows how to build the ViewModel subclasses, and then writing code in a lifecycle method of the Fragment or Activity to set the ViewModel field. However, this library makes it as simple as using one annotation: the `@InjectViewModel` annotation.
 
 
-## The Annotation
+## Quick start guide
 
-The annotation provided by this library follows a similar style to Dagger2's standard dependency injection but allows for an optional argument as follows:
+There are a few parts that have to be put together to get up and running with Dagger ViewModel. These are gradle, the Dagger2 module and finally the annotations.
+
+
+### Gradle
+
+Dagger ViewModel can be added as a dependency to the project using:
+
 ```
-@InjectViewModel(useActivityScope = true)
-public MyFragmentViewModel viewModel;
+    implementation 'com.onepointsixtwo:dagger_viewmodel:1.0.0'
+    implementation 'com.onepointsixtwo:dagger_viewmodel_android:1.0.0'
+    annotationProcessor 'com.onepointsixtwo:dagger_viewmodel_processor:1.0.0'
 ```
 
-The optional argument describes whether a fragment should use its own lifecycle when requesting an instance of ViewModel or its parent activity. Using its parent Activity can be useful if you want to be able to share a ViewModel between Fragments, as described in the documentation for the [Android lifecycle components](https://developer.android.com/topic/libraries/architecture/lifecycle.html). 
+Older versions of gradle may use 'compile' in the place of 'implementation'. 
+
+The first dependency is the annotation itself, the second is the Android classes required for setting up Dagger ViewModel integration, and the third is the annotation processor, to generate the Java code within your build directory from the annotations within your codebase.
 
 
-## The Module
+### Dagger2 Module
 
-We also need to set up a custom module to allow the depedency injection of ViewModels. The module follows a pretty similar pattern to the standard Dagger2 dependency injection library but uses a couple of classes which are largely taken from Google's example code, and provided in the Android part of this library. The module once set up should look roughly as follows:
+To allow injecting ViewModel subclasses we need to create a module from which our ViewModels can be provided. The module should look something like this:
 
 ```
 @Module
@@ -38,9 +46,9 @@ abstract class ViewModelModule {
 }
 ```
 
-This allows for the setup of the custom factory to prodice the view models, and combined with the annotation, can allow a viewmodel to be injected into a fragment or an activity along with all its dependencies from the rest of your Dagger2 modules. 
+The last part of the module is a necessity: the module must provide the method to bind factory. This allows for the creation of a Dagger2-backed factory for creating the ViewModel subclasses complete with all their dependencies injected. Each of the ViewModels included should follow the same pattern as the one shown here; it should use the three annotations with the `@ViewModelKey` annotation using the class of the ViewModel subclass as the key.
 
-The ViewModel can use the standard injection model as follows:
+This will inject the ViewModel subclasses with their dependencies as normal with Dagger2, so the ViewModel subclass could look something like this:
 
 ```
 public class MyFragmentViewModel extends ViewModel {
@@ -56,6 +64,31 @@ public class MyFragmentViewModel extends ViewModel {
 }
 ```
 
-## Using this library
 
-At the time of writing, this library can only be used by cloning or downloading the separate components and adding them as modules within your Android gradle project. However, it should soon be available in the central maven repository, and this README will be updated at that time.
+### @InjectViewModel annotations
+
+The @InjectViewModel annotation itself can only be used within either an android.app.Fragment, an android.support.v4.app.Fragment, an Activity, or an ActivityCompat. It will inject the ViewModel into the given subclass, and has an optional argument for whether to use the Activity scope rather than the fragment's scope when injecting the ViewModel. Using its parent Activity may be useful if you want to be able to share a ViewModel between Fragments, as described in the documentation for the [Android lifecycle components](https://developer.android.com/topic/libraries/architecture/lifecycle.html).
+
+Currently the injected ViewModel field _has to be public_ though this should hopefully get updated in a later version of the library so that it can be a package-local field instead.
+
+```
+@InjectViewModel(useActivityScope = true)
+public MyFragmentViewModel viewModel;
+```
+
+### ViewModelInjectors
+
+When your Android application is built, the annotation processor will generate a file called ViewModelInjectors and this can be used as follows:
+
+```
+void injectFragment(Fragment fragment, ViewModelFactory factory) {
+	ViewModelInejectors.inject(frag, viewModelFactory);
+}
+```
+
+Where the ViewModel factory is injected directly by Dagger2. The power of this, is that it does not have to be called by the individual fragment or Activity being injected. It can be handled by a class which controls depeendency injection in a single place within your application.
+
+
+## License
+
+This library is provided under the MIT license. Please see [here](https://github.com/onepointsixtwo/dagger_viewmodel/blob/master/LICENSE) for details.
