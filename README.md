@@ -7,6 +7,9 @@ Dagger ViewModel provides a seamless way of integrating the ViewModels from Andr
 
 There are many places which suggest a 'half-and-half' approach when using Dagger2 by using dagger to inject the factory which knows how to build the ViewModel subclasses, and then writing code in a lifecycle method of the Fragment or Activity to set the ViewModel field. However, this library makes it as simple as using one annotation: the `@InjectViewModel` annotation.
 
+### Recently updated!
+
+Now supports AndroidX / Kotlin in V 2.0.0
 
 ## Quick start guide
 
@@ -18,9 +21,9 @@ There are a few parts that have to be put together to get up and running with Da
 Dagger ViewModel can be added as a dependency to the project using:
 
 ```
-    implementation 'com.onepointsixtwo:dagger_viewmodel:1.0.0'
-    implementation 'com.onepointsixtwo:dagger_viewmodel_android:1.0.0'
-    annotationProcessor 'com.onepointsixtwo:dagger_viewmodel_processor:1.0.0'
+    implementation 'com.onepointsixtwo:dagger_viewmodel:2.0.0'
+    implementation 'com.onepointsixtwo:dagger_viewmodel_android:2.0.0'
+    annotationProcessor 'com.onepointsixtwo:dagger_viewmodel_processor:2.0.0'
 ```
 
 Older versions of gradle may use 'compile' in the place of 'implementation'. 
@@ -39,10 +42,10 @@ abstract class ViewModelModule {
     @Binds
     @IntoMap
     @ViewModelKey(MyFragmentViewModel.class)
-    abstract ViewModel bindScoreFreeViewModel(MyFragmentViewModel viewModel);
+    abstract fun bindScoreFreeViewModel(MyFragmentViewModel viewModel): ViewModel;
 
     @Binds
-    abstract ViewModelProvider.Factory bindFactory(ViewModelFactory factory);
+    abstract fun bindFactory(ViewModelFactory factory): ViewModelProvider.Factory;
 }
 ```
 
@@ -51,16 +54,10 @@ The last part of the module is a necessity: the module must provide the method t
 This will inject the ViewModel subclasses with their dependencies as normal with Dagger2, so the ViewModel subclass could look something like this:
 
 ```
-public class MyFragmentViewModel extends ViewModel {
+class MyFragmentViewModel @Inject constructor(): ViewModel {
 
     @Inject
-    MyRequiredDependency requiredDependency;
-
-    @Inject
-    public MyFragmentViewModel() {
-
-    }
-
+    lateinit var requiredDependency: MyRequiredDependency
 }
 ```
 
@@ -72,8 +69,8 @@ The @InjectViewModel annotation itself can only be used within either an android
 Currently the injected ViewModel field _has to be public_ though this should hopefully get updated in a later version of the library so that it can be a package-local field instead.
 
 ```
-@InjectViewModel(useActivityScope = true)
-public MyFragmentViewModel viewModel;
+@field:InjectViewModel(useActivityScope = true)
+lateinit var viewModel: MyFragmentViewModel
 ```
 
 ### ViewModelInjectors
@@ -81,7 +78,7 @@ public MyFragmentViewModel viewModel;
 When your Android application is built, the annotation processor will generate a file called ViewModelInjectors and this can be used as follows:
 
 ```
-void injectFragment(Fragment fragment, ViewModelFactory factory) {
+fun injectFragment(Fragment fragment, ViewModelFactory factory) {
 	ViewModelInejectors.inject(frag, viewModelFactory);
 }
 ```
